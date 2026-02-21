@@ -1,27 +1,47 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using System.Linq;
 using Xunit;
+using System.Net;
 
 namespace TestProject.SeleniumTests;
 
 public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProgram> where TProgram : class
 {
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.UseKestrel(options =>
-        {
-            options.ListenAnyIP(5005);
-        });
-    }
+    private IHost? _host;
+    public string ServerAddress { get; private set; } = "http://localhost:5005"; // Default fallback
 
     protected override IHost CreateHost(IHostBuilder builder)
     {
-        var host = builder.Build();
-        host.Start();
-        return host;
+        // Use a random port
+        builder.ConfigureWebHost(webBuilder =>
+        {
+            webBuilder.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
+        });
+
+        _host = builder.Build();
+        _host.Start();
+
+        var server = _host.Services.GetRequiredService<IServer>();
+        var addresses = server.Features.Get<IServerAddressesFeature>();
+        ServerAddress = addresses?.Addresses.FirstOrDefault() ?? "http://localhost:5005";
+
+        return _host;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing)
+        {
+            _host?.Dispose();
+        }
     }
 }
 
@@ -29,7 +49,6 @@ public class HomePageTests : IClassFixture<CustomWebApplicationFactory<Program>>
 {
     private readonly CustomWebApplicationFactory<Program> _factory;
     private readonly IWebDriver _driver;
-    private readonly string _baseUrl = "http://localhost:5005";
 
     public HomePageTests(CustomWebApplicationFactory<Program> factory)
     {
@@ -46,10 +65,10 @@ public class HomePageTests : IClassFixture<CustomWebApplicationFactory<Program>>
     [Fact]
     public void HomePage_Should_Load_Successfully()
     {
-        // This ensures the server is started
-        using var client = _factory.CreateClient();
+        // Ensure the server is started
+        _factory.CreateDefaultClient(); 
         
-        _driver.Navigate().GoToUrl(_baseUrl);
+        _driver.Navigate().GoToUrl(_factory.ServerAddress);
         Assert.Contains("Welcome", _driver.PageSource);
     }
 
