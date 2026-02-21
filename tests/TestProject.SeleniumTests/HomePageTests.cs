@@ -40,12 +40,19 @@ public class HomePageTests : IAsyncLifetime
         var projectPath = Path.Combine(currentDir.FullName, "src", "TestProject.Web");
         _output.WriteLine($"Starting web project at: {projectPath}");
 
+        // Detect current configuration (Debug or Release)
+#if DEBUG
+        string config = "Debug";
+#else
+        string config = "Release";
+#endif
+
         _webProcess = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = "dotnet",
-                Arguments = $"run --project \"{projectPath}\" --urls \"{_baseUrl}\" --no-build",
+                Arguments = $"run --project \"{projectPath}\" --urls \"{_baseUrl}\" -c {config} --no-launch-profile",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
