@@ -10,10 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      # Selenium tests in this setup use WebApplicationFactory, 
-      # but we need Chrome installed on the runner.
-      # ubuntu-latest already has Chrome and ChromeDriver installed.
 
     steps:
     - uses: actions/checkout@v4
